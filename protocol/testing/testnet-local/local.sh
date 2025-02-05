@@ -27,6 +27,12 @@ MNEMONICS=(
 	"switch boring kiss cash lizard coconut romance hurry sniff bus accident zone chest height merit elevator furnace eagle fetch quit toward steak mystery nest"
 )
 
+# Define node keys for all full nodes.
+FULL_NODE_KEYS=(
+	# Node ID: dfa67970296bbecce14daba6cb0da516ed60458a
+	"+c9Wyy9G4VJvVmUQ41CogREJPVMDqnBxefcGoika3Qo7U7eJHVIcjPIFuS0HYm224mWMfYgdNlo5KgJ0z1x/0w=="
+)
+
 # Define node keys for all validators.
 NODE_KEYS=(
 	# Node ID: 17e5e45691f0d01449c84fd4ae87279578cdd7ec
@@ -84,6 +90,23 @@ install_prerequisites() {
 # Create all validators for the chain including a full-node.
 # Initialize their genesis files and home directories.
 create_validators() {
+	# Create directories for full-nodes to use.
+	for i in "${!FULL_NODE_KEYS[@]}"; do
+		FULL_NODE_HOME_DIR="$HOME/chain/.fullnode"
+		FULL_NODE_CONFIG_DIR="$FULL_NODE_HOME_DIR/config"
+		dydxprotocold init "full-node" -o --chain-id=$CHAIN_ID --home "$FULL_NODE_HOME_DIR"
+
+		# Note: `dydxprotocold init` non-deterministically creates `node_id.json` for each validator.
+		# This is inconvenient for persistent peering during testing in Terraform configuration as the `node_id`
+		# would change with every build of this container.
+		#
+		# For that reason we overwrite the non-deterministically generated one with a deterministic key defined in this file here.
+		new_file=$(jq ".priv_key.value = \"${FULL_NODE_KEYS[$i]}\"" "$FULL_NODE_CONFIG_DIR"/node_key.json)
+		cat <<<"$new_file" >"$FULL_NODE_CONFIG_DIR"/node_key.json
+
+		edit_config "$FULL_NODE_CONFIG_DIR"
+	done
+
 	# Create temporary directory for all gentx files.
 	mkdir /tmp/gentx
 
@@ -155,9 +178,25 @@ create_validators() {
 		rm -rf "$VAL_CONFIG_DIR/genesis.json"
 		cp "$FIRST_VAL_CONFIG_DIR/genesis.json" "$VAL_CONFIG_DIR/genesis.json"
 	done
+
+	# Copy the genesis file to the full-node directories.
+	for i in "${!FULL_NODE_KEYS[@]}"; do
+		FULL_NODE_HOME_DIR="$HOME/chain/.fullnode"
+		FULL_NODE_CONFIG_DIR="$FULL_NODE_HOME_DIR/config"
+
+		cp "$FIRST_VAL_CONFIG_DIR/genesis.json" "$FULL_NODE_CONFIG_DIR/genesis.json"
+	done
 }
 
 setup_cosmovisor() {
+	for i in "${!FULL_NODE_KEYS[@]}"; do
+		FULL_NODE_HOME_DIR="$HOME/chain/.fullnode"
+		export DAEMON_NAME=dydxprotocold
+		export DAEMON_HOME="$HOME/chain/.fullnode"
+
+		cosmovisor init /bin/dydxprotocold
+	done
+
 	for i in "${!MONIKERS[@]}"; do
 		VAL_HOME_DIR="$HOME/chain/.${MONIKERS[$i]}"
 		export DAEMON_NAME=dydxprotocold

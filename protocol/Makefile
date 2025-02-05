@@ -350,21 +350,27 @@ reset-chain:
 	mkdir -p localnet/dydxprotocol1
 	mkdir -p localnet/dydxprotocol2
 	mkdir -p localnet/dydxprotocol3
+	mkdir -p localnet/dydxprotocol-fullnode
 	# These files are created as part of `dydxprotocold init`, and are required to initialize the chain,
 	# but mounting the volumes removes them. This is a workaround to create them again.
 	echo '{"height": "0", "round": 0, "step": 0 }' > localnet/dydxprotocol0/priv_validator_state.json
 	echo '{"height": "0", "round": 0, "step": 0 }' > localnet/dydxprotocol1/priv_validator_state.json
 	echo '{"height": "0", "round": 0, "step": 0 }' > localnet/dydxprotocol2/priv_validator_state.json
 	echo '{"height": "0", "round": 0, "step": 0 }' > localnet/dydxprotocol3/priv_validator_state.json
+	echo '{"height": "0", "round": 0, "step": 0 }' > localnet/dydxprotocol-fullnode/priv_validator_state.json
 
 localnet-init:
 	make reset-chain
 	# Build the base image.
 	make localnet-build
 
+localnet-image-build:
+	@echo "Building local:dydxprotocol at commit ${GIT_COMMIT_HASH}"
+	docker build . -t local:dydxprotocol -f testing/testnet-local/Dockerfile --no-cache
+
 localnet-compose-up:
+	@make localnet-image-build
 	@echo "Launching localnet at commit ${GIT_COMMIT_HASH}"
-	@docker build . -t local:dydxprotocol -f testing/testnet-local/Dockerfile --no-cache
 	@docker compose -f docker-compose.yml up --force-recreate $(ARGS)
 
 localnet-compose-upd:
