@@ -1,5 +1,8 @@
+# Indexer base image
+FROM dydxindexer-base AS base-image
+
 # Dockerfile to containerize services locally
-FROM dydxprotocol/indexer-node:16-alpine-m1
+FROM dydxprotocol/indexer-node:16-alpine
 ENV NODE_ENV=development
 ARG service
 
@@ -27,18 +30,18 @@ COPY ./packages/compliance/package.json ./packages/compliance/
 COPY ./packages/notifications/package.json ./packages/notifications/
 
 # Copy build files from all packages being run
-COPY ./packages/base/build ./packages/base/build/
-COPY ./packages/kafka/build ./packages/kafka/build/
-COPY ./packages/postgres/build ./packages/postgres/build/
-COPY ./packages/redis/build ./packages/redis/build/
-COPY ./packages/v4-protos/build ./packages/v4-protos/build/
-COPY ./packages/v4-proto-parser/build ./packages/v4-proto-parser/build/
-COPY ./packages/compliance/build ./packages/compliance/build/
-COPY ./packages/notifications/build ./packages/notifications/build/
+COPY --from=base-image /indexer/packages/base/build ./packages/base/build/
+COPY --from=base-image /indexer/packages/kafka/build ./packages/kafka/build/
+COPY --from=base-image /indexer/packages/postgres/build ./packages/postgres/build/
+COPY --from=base-image /indexer/packages/redis/build ./packages/redis/build/
+COPY --from=base-image /indexer/packages/v4-protos/build ./packages/v4-protos/build/
+COPY --from=base-image /indexer/packages/v4-proto-parser/build ./packages/v4-proto-parser/build/
+COPY --from=base-image /indexer/packages/compliance/build ./packages/compliance/build/
+COPY --from=base-image /indexer/packages/notifications/build ./packages/notifications/build/
 
 # Copy package.json, build files, and environment files from service being run
-COPY ./services/${service}/package.json ./services/${service}/
-COPY ./services/${service}/build ./services/${service}/build
+COPY --from=base-image /indexer/services/${service}/package.json ./services/${service}/
+COPY --from=base-image /indexer/services/${service}/build ./services/${service}/build
 COPY ./services/${service}/.env* ./services/${service}/
 
 # Copy container start script

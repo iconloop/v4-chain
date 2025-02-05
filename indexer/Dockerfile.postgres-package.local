@@ -1,5 +1,8 @@
+# Indexer base image
+FROM dydxindexer-base AS base-image
+
 # Dockerfile to containerize postgres package locally
-FROM dydxprotocol/indexer-node:16-alpine-m1
+FROM dydxprotocol/indexer-node:16-alpine
 ENV NODE_ENV=development
 
 RUN adduser -S dydx
@@ -21,10 +24,10 @@ COPY ./packages/v4-protos/package.json ./packages/v4-protos/
 COPY ./packages/v4-proto-parser/package.json ./packages/v4-proto-parser/
 
 # Copy build files from postgres and imported packages being run
-COPY ./packages/base/build ./packages/base/build/
-COPY ./packages/postgres/build ./packages/postgres/build/
-COPY ./packages/v4-protos/build ./packages/v4-protos/build/
-COPY ./packages/v4-proto-parser/build ./packages/v4-proto-parser/build/
+COPY --from=base-image /indexer/packages/base/build ./packages/base/build/
+COPY --from=base-image /indexer/packages/postgres/build ./packages/postgres/build/
+COPY --from=base-image /indexer/packages/v4-protos/build ./packages/v4-protos/build/
+COPY --from=base-image /indexer/packages/v4-proto-parser/build ./packages/v4-proto-parser/build/
 
 # Copy src directory from postgres for migrations
 COPY ./packages/postgres/src ./packages/postgres/src
